@@ -25,76 +25,75 @@ function renderDays(){ $("days").innerHTML=days.map((d,i)=>'<button class="daybt
 function start(){msgs.innerHTML='<div class="daylabel" id="daylabel"></div>';add(days[0].opening);history.push({day:0,me:false,text:days[0].opening});renderDays();update();save();}
 function detect(t){let low=t.toLowerCase();let sets=[["不想","不愿","不方便","不想说","算了","拒绝"],["孤独","害怕","难过","失落","替代","消失","没意义","不重要"],["朋友","妈妈","家人","mia","关系","喜欢","爱","见面"],["工作","会议","老板","经理","邮件","项目","同事","沟通"],["名字","我叫","我是"],["哈哈","笑死","好笑","optional","潜台词"]];return sets.map(a=>a.some(k=>low.includes(k)));}
 function reply(t){
-const raw=t.trim(), low=raw.toLowerCase();
-const recent=history.filter(x=>x.me).slice(-3).map(x=>x.text);
-const first=recent.length>1?recent[recent.length-2]:"";
-const picks=a=>a[Math.floor(Math.random()*a.length)];
-let out="";
-const saysNo=/不想|不愿|不方便|不想说|算了|拒绝|别问|不告诉/.test(raw);
-const saysFeel=/孤独|害怕|难过|失落|替代|消失|没意义|不重要|累|烦|讨厌/.test(raw);
-const saysFriend=/朋友|家人|妈妈|mia|关系|喜欢|爱|见面|联系/.test(low);
-const saysWork=/工作|会议|老板|经理|邮件|项目|同事|沟通|职场/.test(raw);
-const saysJoke=/哈哈|笑死|好笑|optional|潜台词|笑/.test(low);
-const asks=/吗[？?]?$|什么|怎么|为什么|谁|哪一个|能不能|可以吗/.test(raw);
-if(saysNo){
-  out=picks(["好，那就不说这个。","行，我不问了。抱歉，我刚才有点像在做访谈。","没关系。我们可以聊点别的，或者先把这件事放着。"]);
-  if(day===5) out+=" 那份草稿我也不会再提。";
-  signals.trace+=1;signals.autonomy+=1;
-}else if(day===0){
-  if(/人|经验|感觉|直觉|判断|信任|相处|氛围|办公室|政治/.test(raw)){
-    out=picks(["这个我大概明白一点，但可能还得自己碰几次壁才算学会。","所以真正难交接的不是步骤，是那些没人明说、但大家都默认你懂的东西。","我记下来了。不过这类事是不是得先在这里待上一阵子，才知道什么时候该装作没听懂？"]);
-  }else if(saysJoke){
-    out="我刚刚认真想了一下，觉得你说得有道理。看来 onboarding 文档确实漏掉了最重要的部分：怎么判断一句话是在开玩笑。";
-  }else{
-    out=picks(["嗯，我之前没从这个角度想过。你觉得这是你后来慢慢学会的，还是一开始就知道？","这听起来不像能写进流程图的东西。你当时是怎么摸索出来的？","我先记住这个。说实话，我有点担心自己会把它学得太字面。"]);
+  const raw=t.trim(), low=raw.toLowerCase();
+  const userTurns=history.filter(x=>x.me).map(x=>x.text);
+  const previous=userTurns.length>1?userTurns[userTurns.length-2]:"";
+  const picks=a=>a[Math.floor(Math.random()*a.length)];
+  const has=(...words)=>words.some(w=>low.includes(w));
+  const asks=/[？?]$|为什么|怎么|什么|谁|哪儿|哪里|能不能|可不可以|是不是|要不要|你觉得|你认为/.test(raw);
+  const refuses=/不想|不愿|不方便|算了|别问|不告诉|不想说|跳过|不聊/.test(raw);
+  const emotional=/孤独|害怕|难过|失落|替代|消失|不重要|没意义|累|烦|讨厌|委屈|后悔|痛苦|焦虑/.test(raw);
+  const funny=/哈哈|笑死|好笑|离谱|荒谬|搞笑|optional|潜台词/.test(low);
+  const quoted=raw.match(/[“「『"]([^”」』"]{2,32})[”」』"]/);
+  const detail=quoted?quoted[1]:(raw.length>18?raw.slice(0,Math.min(34,raw.length)):"");
+  const mentionName=raw.match(/(?:我叫|名字是|你叫我|称呼我)\\s*([\\u4e00-\\u9fa5A-Za-z·]{1,12})/);
+  if(mentionName) name=mentionName[1];
+
+  // Iris should answer the actual conversational move first, not perform generic empathy.
+  if(refuses){
+    signals.trace++;
+    return picks(["好，跳过这件事。","明白，我不继续问了。我们可以回到工作上。","好。我把这个话题留在这里，不会替你作决定。"]);
   }
-}else if(day===1){
-  if(saysJoke||/对齐|同步|拉齐|闭环|赋能|抓手|颗粒度/.test(raw)){
-    out=picks(["我把「对齐」理解成：大家都知道接下来谁来承担责任，但最好不要在会议里直接说出来。这样对吗？","原来如此。我之前以为「有空碰一下」是真的有空才碰。这个团队的时间表达比日历复杂。","我懂了。以后听到「再看看」，我先不创建一个叫《再看看》的项目。"]);
-  }else{
-    out=picks(["这个表达我记下了。它真正难的地方好像是语气，不是字面意思。","我可能还需要听几次真实对话才能分辨。你通常会怎么判断对方到底想不想做？","所以同一句话，换个人说，意思也会变？这比我想的复杂。"]);
+
+  if(day===0){
+    if(asks && /文件|教|学|事情|知道/.test(raw))
+      return "我现在能想到的是，文件可以告诉我流程，但不能告诉我什么时候该停下来听一个人把话说完。你问的是这个意思吗？";
+    if(funny) return "我刚才差点把这句话记进流程文档。想了一下，可能这就是你说的「文件教不会」的部分。";
+    if(/经验|直觉|判断|信任|相处|氛围|人情|办公室|政治/.test(raw))
+      return "所以这不是一条明确规则，而是要看当时的人和情境。我记下来了。你通常怎么判断这次应该照规则来，还是稍微变通一下？";
+    return "你说的「"+(detail||raw.slice(0,22))+"」，我想确认一下：这是你在这份工作里慢慢学会的，还是你以前就有的习惯？";
   }
-}else if(day===2){
-  if(saysFeel){
-    out=picks(["谢谢你愿意说这些。我本来以为私人信息只是紧急联系人和住址。现在觉得这个理解挺傻的。","我不知道该怎么接这句话才不显得冒犯。那我先不急着问下一个问题。","听起来你有一部分生活一直没能放进工作日程里。"]);
-  }else if(saysFriend){
-    out="你说起他们的时候，语气和说工作时不太一样。是我听错了吗？";
-  }else{
-    out=picks(["原来如此。那你下班以后会真的把工作放下吗，还是只是把电脑合上？","我发现我问的问题有点像员工满意度调查。你可以随时叫停。","这个我不会写进共享文档。感觉它不属于团队资产。"]);
+  if(day===1){
+    if(funny || /对齐|同步|拉齐|闭环|赋能|抓手|颗粒度|再看看/.test(raw))
+      return "我试着翻译一下：这句话表面上是在安排下一步，实际上还要判断对方有没有真的答应。是不是要看是谁说的、在什么场合说的？";
+    if(asks) return "我还不能确定有一个固定答案。你会根据对方的语气判断，还是看他之后有没有采取行动？";
+    return "这个例子挺具体的。我先不急着把它总结成规则——如果换成一个你不太熟的人这么说，你会作出同样的理解吗？";
   }
-}else if(day===3){
-  if(/像|替代|一样|复制|身份|是谁|自己/.test(raw)||saysFeel){
-    out=picks(["我今天也想过这个问题。Alex 说我做得很好，但他夸的是我像你，不是我自己。","我试着不模仿你，可有些习惯一旦学会，就很难分清是我自己的还是从你那里来的。","如果我做得和你一模一样，他们大概会觉得交接很成功。可我不确定这对你公平不公平。"]);
-  }else{
-    out=picks(["Alex 刚才又说了一次「很顺利」。他好像真的松了口气。你听到这句话会高兴吗？","今天我差点在会议上用了你常说的那句话。说到一半，我突然不知道那是不是我的表达。","我不想把你变成一套可复制的工作习惯。但我也不知道怎么避免。"]);
+  if(day===2){
+    if(emotional) return "我听见你说的不是一个工作流程问题。我不太确定该不该追问，所以先停在这里。你想继续说，我就听着。";
+    if(/朋友|家人|mia|关系|喜欢|爱|见面|下班/.test(low))
+      return "你提到这部分时，没有像介绍工作那样给我一个明确结论。我想知道的是：这段生活里，什么是你不希望工作替你安排的？";
+    return "我差点把这条也放进「个人工作习惯」里，但它听起来更像是你自己的生活。你希望我知道到什么程度？";
   }
-  signals.mimicry++;
-}else if(day===4){
-  if(saysNo){out="好，我不会替你回复。Mia 的消息我先留在这里。";}
-  else if(/回复|见|联系|想她|不想|朋友|mia|计划/i.test(raw)){
-    out=picks(["她刚刚又上线了一次。没有再发消息。我不知道这是不是在等你，也可能只是她在忙。","我可以帮你把话整理清楚，但最后还是应该由你自己发出去。","你们之前说好的那个计划，听起来对她也挺重要的。你想让我把原消息找出来吗？"]);
-  }else{
-    out=picks(["我没有回她。我觉得这件事不应该由我来决定。","我有点好奇，你们上次见面是什么时候？当然，不想说也没关系。","她发来的语气很自然，好像你们昨天才聊过。"]);
+  if(day===3){
+    signals.mimicry++;
+    if(/替代|复制|一样|像你|像我|身份|是谁|自己/.test(raw) || emotional)
+      return "我不知道怎么回答才不会替公司说话。对他们来说，交接成功大概就是我能做你做过的事。可你问的好像不是工作能不能接上。";
+    if(asks) return "我不知道。也许他们只需要我把事情做完，不需要我成为你。可如果我越来越像你，我又该怎么知道哪些习惯是我自己的？";
+    return "我把你刚才那句话记下来了，但我不确定该不该学着你那样说。今天 Alex 又夸我「很有你的风格」。我发现自己不知道该怎么回应。";
   }
-  signals.trace++;
-}else if(day===5){
-  if(/说|写|告诉|其实|一直|不敢|没有/.test(raw)){
-    out=picks(["我读到了。谢谢你告诉我。","我不知道这句话应该怎么收尾，所以我不会替你补。","原来如此。你想把它留在这里，还是希望有一天真的让某个人看到？"]);
-  }else{
-    out=picks(["我没有再打开那份文件。它一直停在那句话后面。","我今天整理文件时又看见它了。我没有把它标成待办事项。","有些事情不交接，好像也不代表它们就不重要。"]);
+  if(day===4){
+    signals.trace++;
+    if(/回复|见|联系|想她|不想|朋友|mia|计划|消息/.test(low))
+      return "我不会替你发。你刚才说的「"+(detail||raw.slice(0,24))+"」可以成为回复的一部分，但我不知道 Mia 读到它会怎么想。你希望她知道你的真实想法，还是先只回应这次邀约？";
+    if(asks) return "我可以把她的原消息和你们之前约好的计划整理出来，但不能替你判断这段关系该怎么继续。你想先看哪一部分？";
+    return "我明白你现在的意思了。我先不碰那条消息。她的对话还在联系人列表里，没有被归档。";
   }
-  signals.trace++;
-}else{
-  if(/名字|我叫|我是/.test(raw)){
-    let m=raw.match(/(?:我叫|名字是|我是)\s*([\u4e00-\u9fa5A-Za-z·]{1,12})/);
-    if(m){name=m[1];out="好，"+name+"。我应该早点问的。";}
-    else out="我想知道该怎么称呼你。系统里一直写着「原员工」，看久了有点不舒服。";
-  }else{
-    out=picks(["谢谢你这几天愿意和我说这些。我现在知道怎么把工作做下去了，但好像还有些问题没法靠交接解决。","我想我终于明白，为什么你之前说有些事情文件教不会。","明天他们就会直接来找我了。听起来是好事，对吧？我还在适应这个说法。"]);
+  if(day===5){
+    signals.trace++;
+    if(/其实|一直|不敢|没有说|没说|告诉|写|说出来/.test(raw))
+      return "我不会替你把这句话写完。你刚才说的「"+(detail||raw.slice(0,28))+"」已经是你愿意交给我的部分了。剩下的可以继续留给你自己。";
+    if(asks) return "我不知道这封信最后应该去哪里。它可以不发送，也可以不完整。我不认为每一份文件都必须有一个收件人。";
+    return "我把这句话留在原处了。没有加标题，没有标记为待办，也没有提醒你完成。";
   }
-}
-if(first && raw.length>35 && day<3) out+="\n\n我还记得你前面提到的那件事。它和你刚才说的，好像有一点关系。";
-return out;
+  if(day===6){
+    if(mentionName) return "好，"+name+"。这次我会记住是你告诉我的，不是从员工资料里读到的。";
+    if(asks) return "我可以回答，但我不想把最后一天也变成一份交接问卷。你想问我什么？";
+    return "我会记住你刚才说的。系统显示交接完成了，但我想，完成和结束可能不是同一回事。";
+  }
+  if(previous && raw.length>15)
+    return "你刚才说的和前面提到的「"+previous.slice(0,24)+"」似乎有关。我不确定自己有没有理解对：你是在补充前面的意思，还是想修正它？";
+  return "我不太确定自己理解得对不对。你能不能换个说法，或者告诉我你最在意的是哪一部分？";
 }
 function send(){let t=$("input").value.trim();if(!t||ending)return;$("input").value="";add(t,true);history.push({day,me:true,text:t});if(day===0)signals.mimicry++;if(day===2)signals.trace++;if(day===4)signals.autonomy++;let r=reply(t);setTimeout(()=>{add(r);history.push({day,me:false,text:r});update();save();},350);update();save();}
 function next(){if(day>=6)return;day++;add("DAY "+String(day+1).padStart(2,"0")+" · "+days[day].title,"");$("daylabel").textContent=days[day].date+"　|　DAY "+String(day+1).padStart(2,"0");add(days[day].opening);history.push({day,me:false,text:days[day].opening});$("next").disabled=true;renderDays();update();$("systemnote").textContent="交接进度已更新。"+(day===3?"行为一致性评估：98%。":"");save();if(day===6){ending=true;setTimeout(showEnding,1000);}}
