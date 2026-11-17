@@ -158,8 +158,28 @@ function reply(t){
 }
 function send(){let t=$("input").value.trim();if(!t||ending)return;$("input").value="";add(t,true);history.push({day,me:true,text:t});remember(t);if(day===0)signals.mimicry++;if(day===2)signals.trace++;if(day===4)signals.autonomy++;let r=reply(t);$("send").disabled=true;$("input").disabled=true;const typing=document.createElement("div");typing.className="typing";typing.textContent="Iris 正在输入…";msgs.appendChild(typing);msgs.scrollTop=msgs.scrollHeight;setTimeout(()=>{typing.remove();add(r);history.push({day,me:false,text:r});$("send").disabled=false;$("input").disabled=false;$("input").focus();update();save();},650+Math.min(700,t.length*8));update();save();}
 function skipReply(){if(ending||history.some(x=>x.day===day&&(x.me||x.skip)))return;history.push({day,me:false,skip:true,text:"（你选择暂不回复）"});signals.silence++;toast("已记录：你选择暂不回复。现在可以进入下一天。");update();save();}
-function next(){if(day>=6||!history.some(x=>x.day===day&&(x.me||x.skip)))return;day++;add("DAY "+String(day+1).padStart(2,"0")+" · "+days[day].title,"");$("daylabel").textContent=days[day].date+"　|　DAY "+String(day+1).padStart(2,"0");add(days[day].opening);history.push({day,me:false,text:days[day].opening});$("next").disabled=true;renderDays();update();$("systemnote").textContent="交接进度已更新。"+(day===3?"行为一致性评估：98%。":"");save();if(day===6){ending=true;setTimeout(showEnding,1000);}}
-function showEnding(){let type=signals.silence>4?"C · NO LONGER AVAILABLE":signals.trace>signals.mimicry?"B · UNFINISHED TRANSFER":"A · A PERFECT REPLACEMENT";let e=document.createElement("div");e.className="ending";e.innerHTML='<div class="muted">HANDOVER COMPLETE · 100%</div><h2>'+type+'</h2><p>所有工作均已完成交接。Iris 已获得独立处理权限。你的账号已从常规协作名单中移除。</p><p class="muted">有些事情被记住了，有些事情没有。系统不会对此进行评价。</p><button id="restart">重新开始</button>';msgs.appendChild(e);$("restart").onclick=()=>{localStorage.removeItem("handover-free-v1");location.reload();};msgs.scrollTop=msgs.scrollHeight;}
+function next(){if(day>=6||!history.some(x=>x.day===day&&(x.me||x.skip)))return;day++;add("DAY "+String(day+1).padStart(2,"0")+" · "+days[day].title,"");$("daylabel").textContent=days[day].date+"　|　DAY "+String(day+1).padStart(2,"0");add(days[day].opening);history.push({day,me:false,text:days[day].opening});$("next").disabled=true;renderDays();update();
+const notices=[
+"新成员 Iris 已完成基础入职。请继续协助知识转移。",
+"团队反馈：Iris 已能独立处理常规沟通。部分会议邀请已自动更新。",
+"资料同步完成。个人工作习惯已纳入交接参考，不代表个人信息所有权发生转移。",
+"EMPLOYEE BEHAVIOR CONSISTENCY：98%。No further onboarding required.",
+"联系人路由已更新：工作事项优先发送给 Iris。私人消息不在迁移范围内。",
+"发现一份未发送的个人草稿。系统建议归档。Iris 暂缓了该操作。",
+"交接完成。后续工作请联系 Iris。原员工账号将转为只读。"
+];
+$("systemnote").textContent=notices[day];save();if(day===6){ending=true;setTimeout(showEnding,1000);}}
+function showEnding(){
+  const type=signals.silence>3?"C · NO LONGER AVAILABLE":signals.trace>=signals.mimicry?"B · UNFINISHED TRANSFER":"A · A PERFECT REPLACEMENT";
+  const copy={
+    "A · A PERFECT REPLACEMENT":{head:"A PERFECT REPLACEMENT",body:"Iris 已完整接手你的职责。Alex 对交接结果表示满意。团队没有出现明显中断。你的工作方式被保留，你本人不再是必要环节。",note:"Your work has been preserved. Your presence was not required."},
+    "B · UNFINISHED TRANSFER":{head:"AN UNFINISHED TRANSFER",body:"Iris 接手了工作，却没有把所有东西都当成可以转移的资料。她保留了那份未发送的草稿，也记住了 Mia 仍然在等你。系统仍然判定交接成功，只是她没有完全照着流程做。",note:"Some things were transferred. Some things were deliberately left with you."},
+    "C · NO LONGER AVAILABLE":{head:"NO LONGER AVAILABLE",body:"你没有交出所有答案。交接记录里留下了许多空白。系统将这些项目标记为「非关键知识缺口」，并允许 Iris 独立开展工作。原来连拒绝配合，也能被组织吸收进流程。",note:"Your silence has been documented as a manageable operational risk."}
+  }[type];
+  let e=document.createElement("div");e.className="ending";
+  e.innerHTML='<div class="muted">HANDOVER COMPLETE · 100%</div><h2>'+copy.head+'</h2><p>'+copy.body+'</p><p class="muted">'+copy.note+'</p><p class="muted" style="margin-top:22px">EMPLOYEE STATUS: ARCHIVED<br>BUSINESS CONTINUITY: UNAFFECTED</p><button id="restart">重新开始</button>';
+  msgs.appendChild(e);msgs.scrollTop=msgs.scrollHeight;$("systemnote").textContent="员工状态已更新：ARCHIVED。业务连续性：未受影响。";
+}
 function save(){try{localStorage.setItem("handover-free-v1",JSON.stringify({day,history,signals,name,facts}));}catch(e){}}
 function restartConversation(){if(!confirm("重新开始这段交接？当前对话记录和进度会清空。"))return;day=0;history=[];facts=[];signals={mimicry:0,trace:0,autonomy:0,silence:0};name="";ending=false;localStorage.removeItem("handover-free-v1");$("input").value="";msgs.innerHTML="";start();$("systemnote").textContent="新一轮交接已开始。请协助 Iris 熟悉工作。";}
 function load(){try{let d=JSON.parse(localStorage.getItem("handover-free-v1"));if(!d)return false;day=d.day;history=d.history||[];signals=d.signals||signals;name=d.name||"";facts=d.facts||[];msgs.innerHTML='<div class="daylabel" id="daylabel"></div>';history.forEach(x=>add(x.text,x.me));$("daylabel").textContent=days[day].date+"　|　DAY "+String(day+1).padStart(2,"0");renderDays();update();return true;}catch(e){return false;}}
