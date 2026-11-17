@@ -11,6 +11,9 @@ const headers = { "Content-Type": "application/json", "Vary": "Origin" };
 export default {
   async fetch(request, env) {
     const origin = request.headers.get("Origin") || "";
+    const json = (data, status = 200) => Response.json(data, {
+      status, headers: { ...headers, ...(ALLOWED_ORIGINS.has(origin) ? { "Access-Control-Allow-Origin": origin } : {}) }
+    });
     if (request.method === "OPTIONS") {
       if (!ALLOWED_ORIGINS.has(origin)) return new Response("Origin not allowed", { status: 403 });
       return new Response(null, { status: 204, headers: {
@@ -21,15 +24,15 @@ export default {
     }
     if (!ALLOWED_ORIGINS.has(origin)) return new Response("Origin not allowed", { status: 403 });
     if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
-    if (!env.QWEN_API_KEY) return Response.json({ error: "Server is missing QWEN_API_KEY" }, { status: 503 });
+    if (!env.QWEN_API_KEY) return json({ error: "Server is missing QWEN_API_KEY" }, 503);
 
     let body;
     try {
       const raw = await request.text();
-      if (raw.length > 18000) return Response.json({ error: "Request too large" }, { status: 413 });
+      if (raw.length > 18000) return json({ error: "Request too large" }, 413);
       body = JSON.parse(raw);
     } catch {
-      return Response.json({ error: "Invalid JSON" }, { status: 400 });
+      return json({ error: "Invalid JSON" }, 400);
     }
 
     const day = Math.max(0, Math.min(6, Number(body.day) || 0));
@@ -40,7 +43,7 @@ export default {
       .map(m => ({ role: m.role, content: m.content.slice(0, 1200) }));
 
     if (!safeMessages.length || safeMessages[safeMessages.length - 1].role !== "user") {
-      return Response.json({ error: "A user message is required" }, { status: 400 });
+      return json({ error: "A user message is required" }, 400);
     }
 
     const scenes = [
@@ -92,16 +95,12 @@ Return only Iris's next in-character message.`;
         })
       });
       const data = await upstream.json();
-      if (!upstream.ok) return Response.json({ error: data?.error?.message || "Model request failed" }, {
-        status: upstream.status, headers: { ...headers, "Access-Control-Allow-Origin": origin }
-      });
+      if (!upstream.ok) return json({ error: data?.error?.message || "Model request failed" }, upstream.status);
       const answer = data?.choices?.[0]?.message?.content?.trim();
       if (!answer) throw new Error("Empty model response");
-      return Response.json({ reply: answer }, { headers: { ...headers, "Access-Control-Allow-Origin": origin } });
+      return json({ reply: answer });
     } catch (error) {
-      return Response.json({ error: error.message || "Upstream request failed" }, {
-        status: 502, headers: { ...headers, "Access-Control-Allow-Origin": origin }
-      });
+      return json({ error: error.message || "Upstream request failed" }, 502);
     }
   }
 };
