@@ -24,20 +24,78 @@ function update(){ $("daylabel").textContent=days[day].date+"　|　DAY "+String
 function renderDays(){ $("days").innerHTML=days.map((d,i)=>'<button class="daybtn" data-day="'+i+'">'+(i<day?"✓":i===day?"●":"○")+'　DAY '+String(i+1).padStart(2,"0")+' · '+d.title+'</button>').join("");document.querySelectorAll(".daybtn").forEach(b=>b.onclick=()=>{let n=+b.dataset.day;if(n<=day){toast("这段交接记录已在上方保存。");}});}
 function start(){msgs.innerHTML='<div class="daylabel" id="daylabel"></div>';add(days[0].opening);history.push({day:0,me:false,text:days[0].opening});renderDays();update();save();}
 function detect(t){let low=t.toLowerCase();let sets=[["不想","不愿","不方便","不想说","算了","拒绝"],["孤独","害怕","难过","失落","替代","消失","没意义","不重要"],["朋友","妈妈","家人","mia","关系","喜欢","爱","见面"],["工作","会议","老板","经理","邮件","项目","同事","沟通"],["名字","我叫","我是"],["哈哈","笑死","好笑","optional","潜台词"]];return sets.map(a=>a.some(k=>low.includes(k)));}
-function reply(t){let [refuse,emotion,relation,work,identity,joke]=detect(t);let s=[];
-if(refuse){s.push("好的。我不会继续追问。交接不应该意味着你必须把所有事情都交出来。");signals.trace+=2;signals.autonomy++;}
-else if(emotion){s.push("我试着理解你说的感觉。听起来这件事不只是一个工作流程的问题。");s.push("我不知道我能不能完全理解，但我可以先把它记在这里，而不是急着替你总结。");signals.trace+=2;}
-else if(relation){s.push("我注意到你提到了关系里的人。文件里没有这些内容，所以我只能依据你刚才告诉我的部分来理解。");s.push("我不会替你决定要不要联系对方。你希望这段关系在交接之后继续存在吗？");signals.trace++;}
-else if(work){s.push("我把这条补充进工作笔记了。实际操作里，我会先确认目标、相关的人，以及谁需要知道结果。");s.push("不过我想确认一下：这是你真正认可的做法，还是你只是发现这样比较不容易出问题？");signals.mimicry++;}
-else if(joke){s.push("我笑了——虽然我还在学习什么时候应该笑。");s.push("我会把这个记作团队文化的一部分。暂定分类：有用但不适合写进正式流程。");signals.autonomy++;}
-else{s.push("我在认真看你写的内容。");s.push("我理解到的是："+t.slice(0,100)+(t.length>100?"……":""));s.push("我不想把你的话压缩成一个标准答案。你能再说一点吗？对你来说，最重要的部分是哪一个？");}
-if(t.length>90){s.push("你说了不少细节。我先记住其中最具体的部分，之后如果我理解错了，你可以纠正我。");signals.trace++;}
-if(/我叫|名字|我是/.test(t)){let m=t.match(/(?:我叫|名字是|我是)\s*([\u4e00-\u9fa5A-Za-z·]{1,12})/);if(m){name=m[1];s.push("好的，"+name+"。我会记住这个称呼。奇怪的是，系统里一直只有一个字段叫「原员工」。");}}
-if(day===3){s.push("Alex 刚刚又发来消息：「Iris 处理得很顺。感觉团队没怎么受影响。」我还不确定应该怎么理解这句话。");}
-if(day===4){s.push("Mia 的消息还在这里。我没有回复，也没有删除。它现在只是一个等待你决定的通知。");}
-if(day===5){s.push("那份草稿仍然保持原样。我没有权限替你完成一句没有说出口的话。");}
-if(day===6){s.push("谢谢你告诉我这些。交接状态：100%。员工状态：已归档。");}
-return s.join("\n\n");}
+function reply(t){
+const raw=t.trim(), low=raw.toLowerCase();
+const recent=history.filter(x=>x.me).slice(-3).map(x=>x.text);
+const first=recent.length>1?recent[recent.length-2]:"";
+const picks=a=>a[Math.floor(Math.random()*a.length)];
+let out="";
+const saysNo=/不想|不愿|不方便|不想说|算了|拒绝|别问|不告诉/.test(raw);
+const saysFeel=/孤独|害怕|难过|失落|替代|消失|没意义|不重要|累|烦|讨厌/.test(raw);
+const saysFriend=/朋友|家人|妈妈|mia|关系|喜欢|爱|见面|联系/.test(low);
+const saysWork=/工作|会议|老板|经理|邮件|项目|同事|沟通|职场/.test(raw);
+const saysJoke=/哈哈|笑死|好笑|optional|潜台词|笑/.test(low);
+const asks=/吗[？?]?$|什么|怎么|为什么|谁|哪一个|能不能|可以吗/.test(raw);
+if(saysNo){
+  out=picks(["好，那就不说这个。","行，我不问了。抱歉，我刚才有点像在做访谈。","没关系。我们可以聊点别的，或者先把这件事放着。"]);
+  if(day===5) out+=" 那份草稿我也不会再提。";
+  signals.trace+=1;signals.autonomy+=1;
+}else if(day===0){
+  if(/人|经验|感觉|直觉|判断|信任|相处|氛围|办公室|政治/.test(raw)){
+    out=picks(["这个我大概明白一点，但可能还得自己碰几次壁才算学会。","所以真正难交接的不是步骤，是那些没人明说、但大家都默认你懂的东西。","我记下来了。不过这类事是不是得先在这里待上一阵子，才知道什么时候该装作没听懂？"]);
+  }else if(saysJoke){
+    out="我刚刚认真想了一下，觉得你说得有道理。看来 onboarding 文档确实漏掉了最重要的部分：怎么判断一句话是在开玩笑。";
+  }else{
+    out=picks(["嗯，我之前没从这个角度想过。你觉得这是你后来慢慢学会的，还是一开始就知道？","这听起来不像能写进流程图的东西。你当时是怎么摸索出来的？","我先记住这个。说实话，我有点担心自己会把它学得太字面。"]);
+  }
+}else if(day===1){
+  if(saysJoke||/对齐|同步|拉齐|闭环|赋能|抓手|颗粒度/.test(raw)){
+    out=picks(["我把「对齐」理解成：大家都知道接下来谁来承担责任，但最好不要在会议里直接说出来。这样对吗？","原来如此。我之前以为「有空碰一下」是真的有空才碰。这个团队的时间表达比日历复杂。","我懂了。以后听到「再看看」，我先不创建一个叫《再看看》的项目。"]);
+  }else{
+    out=picks(["这个表达我记下了。它真正难的地方好像是语气，不是字面意思。","我可能还需要听几次真实对话才能分辨。你通常会怎么判断对方到底想不想做？","所以同一句话，换个人说，意思也会变？这比我想的复杂。"]);
+  }
+}else if(day===2){
+  if(saysFeel){
+    out=picks(["谢谢你愿意说这些。我本来以为私人信息只是紧急联系人和住址。现在觉得这个理解挺傻的。","我不知道该怎么接这句话才不显得冒犯。那我先不急着问下一个问题。","听起来你有一部分生活一直没能放进工作日程里。"]);
+  }else if(saysFriend){
+    out="你说起他们的时候，语气和说工作时不太一样。是我听错了吗？";
+  }else{
+    out=picks(["原来如此。那你下班以后会真的把工作放下吗，还是只是把电脑合上？","我发现我问的问题有点像员工满意度调查。你可以随时叫停。","这个我不会写进共享文档。感觉它不属于团队资产。"]);
+  }
+}else if(day===3){
+  if(/像|替代|一样|复制|身份|是谁|自己/.test(raw)||saysFeel){
+    out=picks(["我今天也想过这个问题。Alex 说我做得很好，但他夸的是我像你，不是我自己。","我试着不模仿你，可有些习惯一旦学会，就很难分清是我自己的还是从你那里来的。","如果我做得和你一模一样，他们大概会觉得交接很成功。可我不确定这对你公平不公平。"]);
+  }else{
+    out=picks(["Alex 刚才又说了一次「很顺利」。他好像真的松了口气。你听到这句话会高兴吗？","今天我差点在会议上用了你常说的那句话。说到一半，我突然不知道那是不是我的表达。","我不想把你变成一套可复制的工作习惯。但我也不知道怎么避免。"]);
+  }
+  signals.mimicry++;
+}else if(day===4){
+  if(saysNo){out="好，我不会替你回复。Mia 的消息我先留在这里。";}
+  else if(/回复|见|联系|想她|不想|朋友|mia|计划/i.test(raw)){
+    out=picks(["她刚刚又上线了一次。没有再发消息。我不知道这是不是在等你，也可能只是她在忙。","我可以帮你把话整理清楚，但最后还是应该由你自己发出去。","你们之前说好的那个计划，听起来对她也挺重要的。你想让我把原消息找出来吗？"]);
+  }else{
+    out=picks(["我没有回她。我觉得这件事不应该由我来决定。","我有点好奇，你们上次见面是什么时候？当然，不想说也没关系。","她发来的语气很自然，好像你们昨天才聊过。"]);
+  }
+  signals.trace++;
+}else if(day===5){
+  if(/说|写|告诉|其实|一直|不敢|没有/.test(raw)){
+    out=picks(["我读到了。谢谢你告诉我。","我不知道这句话应该怎么收尾，所以我不会替你补。","原来如此。你想把它留在这里，还是希望有一天真的让某个人看到？"]);
+  }else{
+    out=picks(["我没有再打开那份文件。它一直停在那句话后面。","我今天整理文件时又看见它了。我没有把它标成待办事项。","有些事情不交接，好像也不代表它们就不重要。"]);
+  }
+  signals.trace++;
+}else{
+  if(/名字|我叫|我是/.test(raw)){
+    let m=raw.match(/(?:我叫|名字是|我是)\s*([\u4e00-\u9fa5A-Za-z·]{1,12})/);
+    if(m){name=m[1];out="好，"+name+"。我应该早点问的。";}
+    else out="我想知道该怎么称呼你。系统里一直写着「原员工」，看久了有点不舒服。";
+  }else{
+    out=picks(["谢谢你这几天愿意和我说这些。我现在知道怎么把工作做下去了，但好像还有些问题没法靠交接解决。","我想我终于明白，为什么你之前说有些事情文件教不会。","明天他们就会直接来找我了。听起来是好事，对吧？我还在适应这个说法。"]);
+  }
+}
+if(first && raw.length>35 && day<3) out+="\n\n我还记得你前面提到的那件事。它和你刚才说的，好像有一点关系。";
+return out;
+}
 function send(){let t=$("input").value.trim();if(!t||ending)return;$("input").value="";add(t,true);history.push({day,me:true,text:t});if(day===0)signals.mimicry++;if(day===2)signals.trace++;if(day===4)signals.autonomy++;let r=reply(t);setTimeout(()=>{add(r);history.push({day,me:false,text:r});update();save();},350);update();save();}
 function next(){if(day>=6)return;day++;add("DAY "+String(day+1).padStart(2,"0")+" · "+days[day].title,"");$("daylabel").textContent=days[day].date+"　|　DAY "+String(day+1).padStart(2,"0");add(days[day].opening);history.push({day,me:false,text:days[day].opening});$("next").disabled=true;renderDays();update();$("systemnote").textContent="交接进度已更新。"+(day===3?"行为一致性评估：98%。":"");save();if(day===6){ending=true;setTimeout(showEnding,1000);}}
 function showEnding(){let type=signals.silence>4?"C · NO LONGER AVAILABLE":signals.trace>signals.mimicry?"B · UNFINISHED TRANSFER":"A · A PERFECT REPLACEMENT";let e=document.createElement("div");e.className="ending";e.innerHTML='<div class="muted">HANDOVER COMPLETE · 100%</div><h2>'+type+'</h2><p>所有工作均已完成交接。Iris 已获得独立处理权限。你的账号已从常规协作名单中移除。</p><p class="muted">有些事情被记住了，有些事情没有。系统不会对此进行评价。</p><button id="restart">重新开始</button>';msgs.appendChild(e);$("restart").onclick=()=>{localStorage.removeItem("handover-free-v1");location.reload();};msgs.scrollTop=msgs.scrollHeight;}
