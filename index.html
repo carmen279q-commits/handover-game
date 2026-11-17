@@ -36,7 +36,7 @@ function reply(t){
   const funny=/哈哈|笑死|好笑|离谱|荒谬|搞笑|optional|潜台词/.test(low);
   const quoted=raw.match(/[“「『"]([^”」』"]{2,32})[”」』"]/);
   const detail=quoted?quoted[1]:(raw.length>18?raw.slice(0,Math.min(34,raw.length)):"");
-  const mentionName=raw.match(/(?:我叫|名字是|你叫我|称呼我)\\s*([\\u4e00-\\u9fa5A-Za-z·]{1,12})/);
+  const mentionName=raw.match(/(?:我叫|名字是|你叫我|称呼我)\s*([\u4e00-\u9fa5A-Za-z·]{1,12})/);
   if(mentionName) name=mentionName[1];
 
   // Iris should answer the actual conversational move first, not perform generic empathy.
