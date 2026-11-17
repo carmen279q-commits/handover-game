@@ -3,6 +3,59 @@
 <style>
 :root{--brand:#5058b8;--ink:#252630;--muted:#777986;--line:#e7e7ec;--bg:#f5f5f8;--bubble:#f1f1f4;--self:#e9ebfb}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",sans-serif}.app{height:100dvh;min-height:600px;display:grid;grid-template-rows:52px 1fr;overflow:hidden}.top{background:var(--brand);color:white;display:flex;align-items:center;padding:0 18px;gap:18px}.logo{font-weight:800;letter-spacing:.12em}.search{margin:auto;background:#ffffff20;border:1px solid #ffffff30;border-radius:5px;padding:5px 14px;width:min(42vw,500px);color:#ffffffbd;font-size:12px}.layout{display:grid;grid-template-columns:54px 230px minmax(300px,1fr) 250px;min-height:0}.rail{background:#30313b;color:#d6d7df;display:flex;flex-direction:column;align-items:center;padding:14px 0;gap:19px}.rail span{font-size:19px;opacity:.8}.rail .active{background:#ffffff20;border-radius:8px;padding:7px}.side{background:#fff;border-right:1px solid var(--line);padding:17px 12px;overflow:auto}.side h3{font-size:12px;color:#737582;letter-spacing:.08em;margin:5px 8px 12px}.nav{padding:9px 10px;border-radius:6px;color:#555765;cursor:pointer;margin:3px 0}.nav.active,.nav:hover{background:#eeeffa;color:#424aa9}.nav small{float:right;color:#999}.chat{display:flex;flex-direction:column;min-width:0;background:#fff}.chathead{height:62px;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 22px;justify-content:space-between}.person{display:flex;align-items:center;gap:11px}.avatar{width:35px;height:35px;border-radius:9px;background:#e6e8f7;color:#4b53ae;display:grid;place-items:center;font-weight:700}.muted{color:var(--muted);font-size:12px}.messages{padding:22px clamp(14px,4vw,54px);overflow:auto;flex:1;background:linear-gradient(#fff,#fdfdfe)}.daylabel{text-align:center;color:#989aa5;font-size:11px;margin:4px 0 22px;letter-spacing:.12em}.msg{display:flex;gap:10px;margin:17px 0;align-items:flex-start}.msg.me{flex-direction:row-reverse}.msg .avatar{flex:none;width:29px;height:29px;font-size:11px}.bodymsg{max-width:min(76%,620px)}.who{font-size:11px;color:#858793;margin:0 0 5px}.me .who{text-align:right}.bubble{padding:11px 14px;background:var(--bubble);border-radius:3px 12px 12px 12px;white-space:pre-wrap;overflow-wrap:anywhere}.me .bubble{background:var(--self);border-radius:12px 3px 12px 12px}.stamp{font-size:10px;color:#a1a2aa;margin-top:4px}.typing{color:#9294a0;font-size:12px;padding:6px 0 10px}.composer{border-top:1px solid var(--line);padding:12px 18px 14px;background:white}.composebox{display:flex;align-items:flex-end;border:1px solid #d9dae2;border-radius:8px;padding:8px;gap:8px}.composebox textarea{border:0;outline:0;resize:none;flex:1;min-height:42px;max-height:130px;font:14px/1.5 inherit}.send{background:var(--brand);color:#fff;border:0;border-radius:6px;padding:9px 15px;cursor:pointer}.send:disabled{opacity:.4}.hint{font-size:10px;color:#9b9ca5;margin:7px 4px 0}.right{background:#fafafd;border-left:1px solid var(--line);padding:18px 15px;overflow:auto}.right h4{font-size:12px;color:#777986;letter-spacing:.08em;margin:4px 0 13px}.panel{background:white;border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:12px}.progress{height:5px;background:#ececf1;border-radius:9px;overflow:hidden;margin:8px 0}.progress i{display:block;height:100%;background:#7077c8;width:14%}.daybtn{display:block;width:100%;text-align:left;background:none;border:0;padding:7px 6px;border-radius:5px;color:#656774;font-size:12px;cursor:pointer}.daybtn.current{background:#eeeffa;color:#424aa9;font-weight:700}.daybtn:disabled{opacity:.42;cursor:default}.file{font-size:12px;color:#626472;padding:7px 0;border-bottom:1px solid #f0f0f3}.next{width:100%;background:#f0f0f8;border:1px solid #dfe0eb;border-radius:6px;padding:9px;color:#4b51a2;cursor:pointer;margin-top:10px}.next:disabled{opacity:.4;cursor:default}.toast{position:fixed;bottom:95px;left:50%;transform:translateX(-50%);background:#30313b;color:#fff;padding:9px 14px;border-radius:7px;font-size:12px;display:none}.ending{max-width:620px;margin:30px auto;padding:28px;border:1px solid var(--line);background:#fff;text-align:center}.ending h2{letter-spacing:.1em}.ending button{margin:8px;padding:9px 14px;border:0;background:var(--brand);color:#fff;border-radius:6px;cursor:pointer}
 @media(max-width:850px){.layout{grid-template-columns:45px 170px minmax(0,1fr)}.right{display:none}.side{padding:12px 8px}.search{display:none}}@media(max-width:560px){.layout{grid-template-columns:42px minmax(0,1fr)}.side{display:none}.top{padding:0 12px}.chathead{padding:0 13px}.messages{padding:16px 12px}.bodymsg{max-width:86%}.app{min-height:520px}}
+
+/* Responsive layout: adapt to both device size and a resized browser window. */
+html,body{width:100%;min-width:0;min-height:100%;overflow:hidden}
+body{min-height:100svh}
+.app{width:100%;width:100dvw;height:100vh;height:100dvh;min-height:0;grid-template-rows:52px minmax(0,1fr)}
+.layout{width:100%;min-width:0;min-height:0;grid-template-columns:clamp(42px,4.2vw,58px) clamp(150px,18vw,230px) minmax(0,1fr) clamp(205px,20vw,260px)}
+.rail,.side,.chat,.right{min-width:0;min-height:0}
+.chat{height:100%;overflow:hidden}
+.messages{min-height:0;overscroll-behavior:contain}
+.composer{padding-bottom:max(12px,env(safe-area-inset-bottom))}
+.composebox textarea{min-width:0;width:100%;font-family:inherit}
+@media(max-width:1050px){
+  .layout{grid-template-columns:46px clamp(145px,21vw,190px) minmax(0,1fr)}
+  .right{display:none}
+}
+@media(max-width:700px){
+  .app{grid-template-rows:48px minmax(0,1fr)}
+  .layout{grid-template-columns:42px minmax(0,1fr)}
+  .side,.right{display:none}
+  .top{padding-left:max(10px,env(safe-area-inset-left));padding-right:max(10px,env(safe-area-inset-right))}
+  .chathead{height:56px;flex:none;padding:0 12px}
+  .messages{padding:14px 12px}
+  .bodymsg{max-width:min(88%,620px)}
+  .composer{padding:9px 10px max(10px,env(safe-area-inset-bottom))}
+  .composebox{gap:6px;padding:6px}
+  .composebox textarea{min-height:40px;font-size:16px}
+  .send{padding:10px 13px;flex:none}
+  .hint{font-size:10px}
+}
+@media(max-width:380px){
+  .logo{font-size:12px;letter-spacing:.06em}
+  .chathead .muted:last-child{font-size:10px}
+  .messages{padding-left:9px;padding-right:9px}
+  .bodymsg{max-width:90%}
+  .bubble{padding:9px 11px}
+  .send{padding:9px 10px}
+}
+@media(max-height:680px) and (min-width:701px){
+  .app{grid-template-rows:46px minmax(0,1fr)}
+  .chathead{height:52px}
+  .messages{padding-top:12px;padding-bottom:12px}
+  .msg{margin:11px 0}
+  .right,.side{padding-top:10px;padding-bottom:10px}
+}
+@media(orientation:landscape) and (max-height:500px){
+  .app{grid-template-rows:42px minmax(0,1fr)}
+  .chathead{height:46px}
+  .messages{padding-top:8px;padding-bottom:8px}
+  .msg{margin:8px 0}
+  .composer{padding-top:6px;padding-bottom:max(6px,env(safe-area-inset-bottom))}
+  .composebox textarea{min-height:34px;max-height:72px}
+  .hint{display:none}
+}
 </style></head><body><div class="app"><header class="top"><div class="logo">◈ WORKSPACE</div><div class="search">⌕　搜索（目前没有需要搜索的内容）</div><div class="muted" style="color:#fff">⋯</div></header><div class="layout"><aside class="rail"><span class="active">▣</span><span>▤</span><span>▦</span><span>♧</span><span style="margin-top:auto">⚙</span></aside><aside class="side"><h3>聊天</h3><div class="nav active">◉ Iris <small>在线</small></div><div class="nav" data-panel="团队频道">▣ 团队频道</div><div class="nav" data-panel="项目文件">▤ 项目文件</div><div class="nav" data-panel="日历">▦ 日历</div><div class="nav" data-panel="联系人">♧ 联系人</div><h3 style="margin-top:28px">最近</h3><div class="nav" data-panel="经理 · Alex">Alex <small>昨天</small></div><div class="nav" data-panel="朋友 · Mia">Mia <small>周五</small></div><div class="panel" style="margin-top:28px"><b style="font-size:12px">HANDOVER PROGRAM</b><p class="muted">知识转移计划 · 内部</p><div class="muted">参与者：你、Iris</div></div></aside><main class="chat"><div class="chathead"><div class="person"><div class="avatar">I</div><div><b>Iris</b><div class="muted">新同事 · 正在熟悉工作</div></div></div><div class="muted">视频通话　⌕　⋯</div></div><section class="messages" id="messages"><div class="daylabel" id="daylabel">MONDAY · 09:07 AM　|　DAY 01</div></section><div class="composer"><div class="composebox"><textarea id="input" rows="2" placeholder="给 Iris 发送消息……（Enter 发送，Shift + Enter 换行）"></textarea><button class="send" id="send">发送</button></div><div class="hint">这是一个离线叙事体验。Iris 会根据你的表达、已分享的信息和剧情进度作出回应；不调用外部 AI 服务。</div></div></main><aside class="right"><h4>交接进度</h4><div class="panel"><div style="display:flex;justify-content:space-between"><b style="font-size:12px">七日交接计划</b><span class="muted" id="pct">14%</span></div><div class="progress"><i id="bar"></i></div><div class="muted" id="daycount">DAY 01 / 07</div><div id="days"></div><button class="next" id="next" disabled>完成今日交接 →</button></div><h4>共享文件</h4><div class="panel"><div class="file">▤ 交接清单_v7.docx</div><div class="file">▤ 团队沟通规范.pdf</div><div class="file">▤ 个人工作笔记（部分）</div><div class="file">▤ 未发送的草稿.txt</div></div><h4>系统通知</h4><div class="panel muted" id="systemnote">新成员 Iris 已加入工作区。请协助完成知识转移。</div></aside></div></div><div class="toast" id="toast"></div>
 <script>
 (()=>{
