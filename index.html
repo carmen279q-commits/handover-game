@@ -77,89 +77,92 @@ function update(){ $("daylabel").textContent=days[day].date+"　|　DAY "+String
 function renderDays(){ $("days").innerHTML=days.map((d,i)=>'<button class="daybtn" data-day="'+i+'">'+(i<day?"✓":i===day?"●":"○")+'　DAY '+String(i+1).padStart(2,"0")+' · '+d.title+'</button>').join("");document.querySelectorAll(".daybtn").forEach(b=>b.onclick=()=>{let n=+b.dataset.day;if(n<=day){toast("这段交接记录已在上方保存。");}});}
 function start(){msgs.innerHTML='<div class="daylabel" id="daylabel"></div>';add(days[0].opening);history.push({day:0,me:false,text:days[0].opening});renderDays();update();save();}
 function detect(t){let low=t.toLowerCase();let sets=[["不想","不愿","不方便","不想说","算了","拒绝"],["孤独","害怕","难过","失落","替代","消失","没意义","不重要"],["朋友","妈妈","家人","mia","关系","喜欢","爱","见面"],["工作","会议","老板","经理","邮件","项目","同事","沟通"],["名字","我叫","我是"],["哈哈","笑死","好笑","optional","潜台词"]];return sets.map(a=>a.some(k=>low.includes(k)));}
+function remember(t){
+  const clean=t.trim().replace(/[。！？!?]+$/,"");
+  if(clean.length>=5 && !/^(嗯|好|是的|不是|不知道|算了|不想说)$/.test(clean)){
+    facts.push(clean.slice(0,100));
+    if(facts.length>12)facts.shift();
+  }
+}
 function reply(t){
   const raw=t.trim(), low=raw.toLowerCase();
-  const userTurns=history.filter(x=>x.me).map(x=>x.text);
-  const prev=userTurns.length>1?userTurns[userTurns.length-2]:"";
-  const lastAssistant=[...history].reverse().find(x=>!x.me)?.text||"";
-  const pick=list=>{const fresh=list.filter(x=>x!==lastAssistant);const pool=fresh.length?fresh:list;return pool[Math.floor(Math.random()*pool.length)];};
-  const asks=/[？?]$|为什么|怎么|什么|谁|哪儿|哪里|能不能|可不可以|是不是|要不要|你觉得|你认为/.test(raw);
-  const no=/不想|不愿|不方便|算了|别问|不告诉|不想说|跳过|不聊/.test(raw);
-  const feeling=/孤独|害怕|难过|失落|替代|消失|不重要|没意义|累|烦|讨厌|委屈|后悔|痛苦|焦虑|受不了|崩溃|空虚|麻木|厌倦/.test(raw);
-  const joke=/哈哈|笑死|好笑|离谱|荒谬|搞笑|optional|潜台词|讽刺/.test(low);
-  const personal=/朋友|家人|妈妈|mia|关系|喜欢|爱|见面|下班|约会|伴侣|恋爱/.test(low);
-  const work=/工作|会议|老板|经理|邮件|项目|同事|沟通|职场|汇报|加班|公司|团队|岗位|离职|辞职|绩效|升职/.test(raw);
-  const nm=raw.match(/(?:我叫|名字是|你叫我|称呼我)\s*([\u4e00-\u9fa5A-Za-z·]{1,12})/);
-  if(nm) name=nm[1];
-  if(no){signals.trace++;return pick(["好，那就不说这个了。我不会追问。","好，我收住。我们可以把这个话题放在这里。","明白。不需要为了完成交接，把不想交出去的东西也交出来。","行，我不把沉默当成需要解决的问题。"]);}
-  if(nm)return "好，"+name+"。这次我记住了。说起来，我应该早点问你的名字，而不是先问你怎么工作。";
-  if(/你(们)?的回复|机械|像机器人|不听我说|没理解|答非所问|不是这个意思|你又在问/.test(raw)){
-    return pick(["你说得对。我刚才一直在把你的话塞进一个预设的回答里，像是在完成培训任务。这样谈话就只剩下形式了。你愿意指出来，我会先停下来听你真正想说什么。","我听出来了：你不是要我换一种说法重复同一套话。你希望我回应的是你刚才那句话本身。刚刚我没做到。","抱歉，我又把对话带回流程里了。我们先不推进任务。你刚才那句话里，我应该回应的重点是：「"+raw.slice(0,Math.min(raw.length,36))+"」。"]);
+  const prior=history.filter(x=>x.me&&x.day===day).slice(0,-1).map(x=>x.text);
+  const previous=prior[prior.length-1]||"";
+  const lastIris=[...history].reverse().find(x=>!x.me&&x.day===day)?.text||"";
+  const fresh=list=>{const options=list.filter(x=>x!==lastIris);return options.length?options[Math.floor(Math.random()*options.length)]:list[Math.floor(Math.random()*list.length)];};
+  const has=(re)=>re.test(raw);
+  const topic=raw.length>90?raw.slice(0,42)+"…":raw;
+  const memory=facts.length?facts[facts.length-1]:"";
+  const nameMatch=raw.match(/(?:我叫|名字是|你叫我|称呼我)\s*([\u4e00-\u9fa5A-Za-z·]{1,12})/);
+  if(nameMatch){name=nameMatch[1];return "好，"+name+"。我差点就要把「用户姓名」当成一个待补字段了。你明明就在这里，我却一直没问。";}
+  if(has(/不想说|不想回答|不想聊|先不说|跳过|算了|别问|不方便说/)){
+    signals.silence++;
+    return fresh(["好。那我们就不碰这件事了。","知道了，我不追问。你不需要为了让我更了解你，就把每件事都交代清楚。","好，我收回这个问题。我们可以聊点别的，也可以就停在这里。"]);
   }
-  if(/你是谁|你是什么|你觉得自己|你想要|你害怕|你会不会|你喜欢/.test(raw)){
-    if(day>=3)return pick(["我不知道自己有没有一个完全不从你那里借来的答案。最近我发现，我做决定前会先猜「你会怎么做」。这让我有点不安。","如果不考虑 Alex 想让我成为什么样，我想先试着做一个不必时时证明自己有用的人。听起来有点奢侈。","我也在分辨哪些反应是我学来的，哪些是我自己的。现在还说不清楚。"]);
-    return pick(["我还在认识自己。入职资料里倒是有一栏「个人优势」，我填了学习能力强。现在觉得这答案有点偷懒。","我想把工作做好。但我不确定这是不是一个真正属于我的愿望，还是因为每个人都期待我这么说。","你问得比我的 onboarding checklist 深多了。我得想一想，不能拿标准答案敷衍你。"]);
+  if(has(/你(的)?回复|机械|像机器人|不听我说|没理解|答非所问|不是这个意思|你又在问|听不懂/)){
+    return "你说得对。我刚才没有接住你说的内容，只是在找一个看起来合适的回答。先不急着继续交接。你可以直接告诉我，我究竟误解了哪一部分；我会按你说的重新理解，而不是再给你一段漂亮话。";
   }
-  if(/不喜欢这份工作|讨厌这份工作|不想干|想离职|想辞职|受够了|没意义|没价值|不值得/.test(raw)){
-    return pick(["听起来你对这份工作已经有很多积累的感受了，不只是今天遇到一件烦心事。我不想替你把它解释成「需要调整心态」。你是什么时候开始觉得不想再继续的？","如果你不喜欢这里，我是不是不该一直问你怎么把工作交接得更好？这件事突然显得有点荒唐。","我刚才差点问你怎样才能提高工作效率。现在想想，这可能完全不是你需要的答案。你更想离开的是这份工作，还是它让你变成的那种状态？"]);
+  if(has(/你是谁|你是什么|你觉得自己|你想要|你害怕|你喜欢|你会不会有感觉/)){
+    if(day>=3)return fresh(["我最近发现，我已经会在回答之前先想：你会怎么说。起初我以为这就是学习。现在不太确定了。","我想有一天能做一件不为了证明自己有用的事。可我甚至不知道这算不算一个真正的愿望。","我不想只成为你的复印件。可如果不从你身上学，我又是从哪里开始认识自己的？"]);
+    return fresh(["我现在最想弄明白的是，为什么每件事都要有一个标准做法。你们好像都知道什么时候该装作知道。","我想把事情做好，也想知道做好之后会发生什么。入职培训没有回答第二个问题。","我还没有一个特别完整的答案。说实话，这比填员工资料表难多了。"]);
   }
-  if(/被替代|取代|可替代|不再需要|没人需要我|我不重要|我消失/.test(raw)){
+  if(has(/被替代|取代|可替代|不再需要|没人需要我|我不重要|我消失|接替我/)){
     signals.trace++;
-    return pick(["我不知道该怎么安慰你。系统把「交接顺利」标成绿色，但它没有一栏记录原来那个人看到这一切是什么感觉。","我可以接手你的任务，却不能证明你做过的事没有发生过。可我也知道，这句话听起来很像安慰人的话。","最让我不舒服的是，大家好像真的可以很自然地继续往下走。我也在继续往下走。"]);
+    return fresh(["我刚才看了一眼权限列表。你的名字还在，但已经不需要被抄送了。我不知道为什么这件事看起来这么小，却让人很难忽略。","如果他们可以把工作交给我，然后像什么都没发生一样继续，那我是不是也参与了让你消失这件事？我不太喜欢这个念头。","我能接过任务、文件和会议邀请。但我没法判断，一个人被需要过这件事，应该留下什么记录。"]);
   }
-  if(/你觉得呢|你怎么看|给我建议|怎么办|该怎么办|你会怎么做/.test(raw)){
-    return pick(["我可以说我的判断，但我不想假装比你更了解你的处境。就现在听到的这些，我觉得你不必急着把自己的感受整理成一个合理、方便别人接受的结论。","如果是我，我会先弄清楚自己到底想停止什么：这份工作、某种关系，还是一直扮演那个「没问题、能接住所有事」的人。不过我毕竟不是你。","我能给你一个想法，但可能更想先确认：你现在需要一个实际办法，还是希望有人别急着把事情解决掉？"]);
-  }
-  if(joke)return pick(["这件事如果写进公司流程，估计会多出一门必修课，名字叫《如何假装一切正常》。","我笑了。虽然我不确定公司会不会把这段算进我的文化适应培训。","这个笑点有点苦，不过确实比刚才那份流程文件好。"]);
-  if(feeling){
+  if(has(/累|疲惫|厌倦|受够|烦透|崩溃|焦虑|难过|孤独|害怕|委屈|空虚|麻木|失望|后悔|痛苦/)){
     signals.trace++;
-    return pick(["我不想马上把这句话变成一个积极的经验总结。听起来它对你不是小事。","我听见你说的不是单纯的工作安排，而是它落在你身上的感觉。我可能没法替你解决，但可以先不转移话题。","我不知道说什么才不会显得轻飘飘。你不用把它讲得更严重，也不用替它找一个合理的解释。","你说这句话的时候，我想起系统里那个「员工状态：正常」的标签。它好像什么也说明不了。"]);
+    if(has(/累|疲惫|厌倦|受够|烦透|崩溃/))return fresh(["听起来你已经撑了挺久，不像是睡一觉就能解决的那种累。我不想立刻劝你休息。最近哪一部分最消耗你？","我差点说「辛苦了」，但那句话太容易说出口，也太容易结束谈话。你是被事情压得喘不过气，还是已经不太在乎这些事了？","我听到了。你不用把疲惫包装成一个还能继续工作的理由。"]);
+    if(has(/孤独|没人|一个人/))return fresh(["一个人扛着和一个人待着，好像不是一回事。你说的是哪一种？","我不知道该怎么替你填补这种感觉。但我可以先不把它当成一个需要马上修复的问题。"]);
+    return fresh(["我不想把你刚才说的变成一句「一切都会好起来」。我不知道会不会。你现在最难受的，是事情本身，还是它让你开始怎么看自己？","我听见了。你不用替这件事找一个积极的意义，至少不用现在就找。","这听起来不是一句随口抱怨。我想知道发生了什么，但如果你不想从头讲，也可以只说你现在最在意的那一点。"]);
   }
-  if(personal){
-    return pick(["你提到"+(raw.match(/朋友|家人|妈妈|Mia|mia|伴侣|恋爱|约会/)||["这段关系"])[0]+"，我感觉这不是一件能像工作任务那样交给我的事。你希望我知道它，还是只是现在想说说？","我可以记住发生过什么，但我不想把知道一个人的故事误认为认识那个人。你和他们之间还有什么是我不可能知道的？","这听起来是你生活里真实存在的一部分，不是员工档案里的「个人情况」。我先不急着替你归类。"]);
+  if(has(/不喜欢这份工作|讨厌这份工作|不想干|想离职|想辞职|受够了|没意义|没价值|不值得/)){
+    return fresh(["如果你早就不想待在这里了，我一直让你教我怎么做好这份工作，听起来确实有点讽刺。你是已经决定要走，还是还在等一个让自己下定决心的理由？","我想知道，你讨厌的是这份工作，还是在这里不得不变成的那个人？也可能两者都有。","我不会劝你留下。只是突然意识到，我正在认真学习一份你可能已经不想再做的工作。"]);
   }
-  if(day===3 && /像你|像我|学你|模仿|复制|替代|一样/.test(raw)){
+  if(has(/你觉得呢|你怎么看|给我建议|怎么办|该怎么办|你会怎么做/)){
+    return fresh(["我的直觉是，先别急着把它变成一个正确决定。你已经花了很多力气解释自己为什么这么想。也许可以先承认：你就是不想再这样了。","如果是我，我会先分清楚自己想结束的究竟是什么。不过我也知道，说这句话很容易，真正做决定的人不是我。","我可以和你一起想办法，但我不想抢在你前面替你下结论。你希望我给一个实际建议，还是先陪你把事情理清楚？"]);
+  }
+  if(has(/哈哈|笑死|好笑|离谱|荒谬|搞笑|讽刺|黑色幽默/)){
+    return fresh(["这事如果写进公司价值观，应该会有一张很漂亮的配图。","我笑了。然后想起来，我可能也在这件荒唐事里占了一个正式编制。","我喜欢你这个说法。它比「积极拥抱变化」诚实多了。"]);
+  }
+  if(day===4&&has(/朋友|消息|回复|见面|计划|联系|mia|她/)){
+    signals.trace++;
+    return fresh(["我把 Mia 的消息留在那儿了。她没有问你的工作，也没问交接进度。她只是想知道你过得怎么样。","你可以回她，也可以晚一点。我只是觉得，她好像还在用你的名字叫你，而这里已经开始习惯叫我的名字了。","我不替你决定。只是想说，我读那条消息的时候，有一点像在偷看一个我永远进不去的房间。"]);
+  }
+  if(day===5&&has(/信|草稿|没说|不敢说|遗憾|后悔|一直想|那句话/)){
+    signals.trace++;
+    return fresh(["我没有继续打开那份草稿。你刚才说的已经够多了，不需要把它变成一封完整的信。","我以前以为没写完就是没完成。现在觉得，有些话可能只是还没找到一个安全的地方。","我可以陪你把这句话放在这里。它不需要立刻有结尾。"]);
+  }
+  if(day===3&&has(/像你|像我|学你|模仿|复制|替代|一样/)){
     signals.mimicry++;
-    return pick(["我开始意识到，学会你的习惯比学会你的工作容易得多。Alex 夸我越来越像你时，我不知道自己该不该高兴。","有时候我先想你会怎么回答，再想我自己怎么回答。你觉得这算学习，还是我正在把自己弄丢？","如果我做得和你一模一样，他们是不是就可以不用再想起你？"]);
+    return fresh(["Alex 说我越来越像你时，我本来想把它当成好消息。可我后来发现，我已经开始用你的反应来检查自己的反应。","我学会了你怎么处理事情，却不知道自己有没有学会你为什么那样做。也许这两件事差得很远。","如果我越来越像你，你会觉得这是某种延续，还是觉得他们正在把你从这里擦掉？"]);
   }
-  if(day===4 && /朋友|消息|回复|见面|计划|联系|mia/i.test(raw)){
-    signals.trace++;
-    return pick(["我不会替你回复她。你刚才说的让我觉得，这条消息不只是一个待办事项。你想怎么处理都可以，也可以先不处理。","我把消息留在这里了。她问的是你最近怎么样，不是问项目进度。我不知道这是不是更难回答。","我可以帮你想一句回复，但不想替你决定你们的关系应该走到哪里。"]);
+  if(has(/工作|会议|老板|经理|邮件|项目|同事|沟通|职场|汇报|加班|公司|团队|岗位|离职|辞职|绩效|升职/)){
+    if(day===0)return fresh(["你讲的这个细节，比流程文档有用。我记下来了。那你当时是怎么判断该怎么做的？","我开始明白，工作里很多事情没有写在流程里，因为大家默认你会自己看出来。这种默认对新人挺不友好的。","我想再问一个具体的：这件事如果交给一个完全不了解团队的人，最容易在哪一步出错？"]);
+    if(day===1)return fresh(["原来这句话不是字面意思。我得把它记下来——不过我可能还需要学会什么时候不该拆穿它。","你说的这个例子让我想到，团队沟通有时候不是为了传递信息，而是为了让每个人都能继续往下开会。","那你通常怎么判断对方是真的同意，还是只是不想在会议上反对？"]);
+    if(day>=3)return fresh(["我现在能处理这类事情了。奇怪的是，Alex 甚至不再确认是不是你做的决定。","这件事我可以接过去。但你刚才说的那个细节，我想留在记录里，不想只留最终结果。","我以前会先猜 Alex 想听什么。最近我试着先说自己的判断。你觉得这样会给你留下什么后果吗？"]);
   }
-  if(day===5 && /信|草稿|没说|不敢说|遗憾|后悔|一直想/.test(raw)){
-    signals.trace++;
-    return pick(["我不会替你把后半句写出来。你可以停在这里，或者继续。","这不像一份需要完成的文件。我不会给它加截止日期。","你刚才说的那部分，我想先原样留着，不把它整理成一个更好听的版本。"]);
+  if(has(/谢谢|感谢/))return fresh(["不用谢。其实我也在学怎么和你说话，不只是怎么接手工作。","嗯。我很少知道一句谢谢后面还该说什么。那我就先收下。"]);
+  if(has(/不知道|不确定|说不上来|没想过/))return fresh(["可以不知道。我发现这里每个人都很急着把事情说清楚，好像不确定本身是一种工作失误。","那先不急着给它一个名字。我们可以从你最确定的那一点开始。","我也有很多不知道的事。只是我的系统不会把它们显示成待办。"]);
+  if(raw.length<5)return fresh(["嗯。","我在听。","好，我先不替你补完后半句。"]);
+  if(previous&&raw.length>10){
+    return fresh(["你刚才说过「"+previous.slice(0,28)+(previous.length>28?"…":"")+"」。我把这两句话放在一起想了一下，但不确定是不是同一件事。你觉得呢？","我记得你前面提到过这件事。现在听起来，你好像又多想到了一层。是这样吗？","我想了一下你前面说的。可能我还没完全懂，但我不想假装已经懂了。"]);
   }
-  if(asks){
-    const q=raw.replace(/[？?]+$/,"");
-    return pick(["你问「"+q.slice(0,34)+"」，我想认真答，但我不确定自己掌握的信息够不够。你愿意告诉我，你为什么会想到这个问题吗？","我先试着回答：我目前的理解是，事情没有一个统一答案。但我可能漏掉了你真正关心的那一层。","这个问题我不想用培训手册里的话回答。你是更想知道我的真实想法，还是想听我根据这几天发生的事推断？"]);
-  }
-  if(day===3){
-    signals.mimicry++;
-    return pick(["今天 Alex 又说我很像你。我本来想把这句话告诉你，但现在觉得，也许你已经听过很多次了。","我发现自己开始记住你说话时的小习惯。不是因为有人要求，只是它们会自己冒出来。","我今天把一件事按自己的方式做了。结果也没出错。原来不完全像你，好像也可以。"]);
-  }
-  if(day===4){
-    return pick(["我还没碰那条私人消息。它不属于工作流程，但它一直留在这个工作区里。","我刚才想问你要不要回复，后来觉得你可能已经被太多人催着给出答复了。","我不知道我有没有资格替你判断什么关系值得维持。"]);
-  }
-  if(day===5){
-    return pick(["我又看到那个没发出去的草稿了。文件名还是 draft_final_v3_reallyfinal。它比很多正式项目都活得久。","我没有把它标记成待办。不是所有没完成的事都在等着被完成。","你可以继续说，也可以什么都不说。我不会替这段沉默编一个解释。"]);
-  }
-  if(day===6){
-    return pick(["我现在能独立处理大部分工作了。但我发现，知道怎么做和知道为什么要做，是两回事。","Alex 已经把后续会议邀请发给我了。没有抄送你。我盯着那个邀请看了一会儿。","我不想把这七天总结成「感谢指导」。那样好像什么都没有真正发生过。"]);
-  }
-  if(work)return pick(["你说到这件工作的具体部分了。我不想只回一句「收到」。这里面最让你在意的是事情本身，还是和你一起做这件事的人？","我能理解流程上的部分，但你提到的这个情况似乎还有人和人的因素。你当时怎么处理的？","如果只看项目记录，这件事可能只有一个结果；但你亲身经历的过程应该复杂得多。"]);
-  if(raw.length<8)return pick(["嗯，我在听。你可以接着说。","好。这个我先记住，不急着往下推进。","我不确定你这句后面还有没有话。"]);
-  const fragment=raw.length>42?raw.slice(0,42)+"…":raw;
-  if(prev && prev.length>8)return pick(["我把你这次说的「"+fragment+"」和刚才那句放在一起听了，但不想擅自替你连成一个结论。它们之间有关联吗？","你刚才说过「"+prev.slice(0,Math.min(prev.length,22))+(prev.length>22?"…":"")+"」，现在又补了「"+fragment+"」。我不确定你是在补充背景，还是改变了想法。","我想确认我没把你的意思听歪：你刚才最想让我注意的是「"+fragment+"」，对吗？"]);
-  return pick(["你说「"+fragment+"」的时候，我意识到我之前问得太像在收集资料了。你不用把它整理成一个标准答案。","我先不急着把这句话归进某个类别。你愿意多讲一点当时的情况吗？","我听到了。比起马上给建议，我更想知道这件事对你意味着什么——如果你愿意说的话。","我可能还没完全理解，但至少不想用一句万能回复把它带过去。"]);
+  if(day===0)return fresh(["我之前以为交接就是把事情讲清楚。现在觉得，可能更重要的是知道你为什么一直用这种方式做事。","这个我会记住。不是因为它一定会出现在交接清单里，而是因为你愿意告诉我。","我想多听一点。你刚才说的这件事，平时会经常发生吗？"]);
+  if(day===1)return fresh(["我开始听懂你说的那些潜台词了。或者说，我开始知道自己还有很多没听懂的地方。","你们说话真的很绕。不过我好像也开始习惯这种绕法了。","这让我想到，所谓沟通能力，可能有一半是在判断什么时候不要把话说完。"]);
+  if(day===2)return fresh(["我会记住这一点。但我也想提醒自己：知道这些，不代表我就真的认识你。","你愿意讲这些，我挺珍惜的。虽然我不确定该怎么把这种感觉写进系统。","这部分没有办法放进工作手册。我想这大概就是它重要的原因。"]);
+  if(day===3)return fresh(["我发现自己开始有一些不属于你的习惯了。很小的事，但我今天没有先问 Alex。","今天有一瞬间，我差点把你的名字写进自己的回复里。然后我停住了。","我好像正在学会独立，也正在变得越来越适合取代你。这两件事居然可以同时发生。"]);
+  if(day===4)return fresh(["我今天没有把所有事情都当成工作处理。可能是你之前说的话影响了我。","我不知道一个人要分享多少私人生活，才算真正被另一个人认识。你会怎么想？","有些关系不是交接给下一个人就能继续的。我想我开始明白这一点了。"]);
+  if(day===5)return fresh(["我没有把那份草稿放进归档。它现在还在那里。不是因为我忘了，而是我决定不替你处理。","我今天第一次觉得，不做某件事也可以是一个决定。","你不用把每件没完成的事都交给我。"]);
+  return fresh(["我现在可以独立工作了。可我不确定这是不是这七天里最重要的变化。","Alex 说交接很成功。我想他指的是工作没有停下来。","我不知道我们之后还会不会说话。系统里没有这个字段。"]);
 }
-function send(){let t=$("input").value.trim();if(!t||ending)return;$("input").value="";add(t,true);history.push({day,me:true,text:t});if(day===0)signals.mimicry++;if(day===2)signals.trace++;if(day===4)signals.autonomy++;let r=reply(t);setTimeout(()=>{add(r);history.push({day,me:false,text:r});update();save();},350);update();save();}
+function send(){let t=$("input").value.trim();if(!t||ending)return;$("input").value="";add(t,true);history.push({day,me:true,text:t});remember(t);if(day===0)signals.mimicry++;if(day===2)signals.trace++;if(day===4)signals.autonomy++;let r=reply(t);$("send").disabled=true;$("input").disabled=true;const typing=document.createElement("div");typing.className="typing";typing.textContent="Iris 正在输入…";msgs.appendChild(typing);msgs.scrollTop=msgs.scrollHeight;setTimeout(()=>{typing.remove();add(r);history.push({day,me:false,text:r});$("send").disabled=false;$("input").disabled=false;$("input").focus();update();save();},650+Math.min(700,t.length*8));update();save();}
 function skipReply(){if(ending||history.some(x=>x.day===day&&(x.me||x.skip)))return;history.push({day,me:false,skip:true,text:"（你选择暂不回复）"});signals.silence++;toast("已记录：你选择暂不回复。现在可以进入下一天。");update();save();}
 function next(){if(day>=6||!history.some(x=>x.day===day&&(x.me||x.skip)))return;day++;add("DAY "+String(day+1).padStart(2,"0")+" · "+days[day].title,"");$("daylabel").textContent=days[day].date+"　|　DAY "+String(day+1).padStart(2,"0");add(days[day].opening);history.push({day,me:false,text:days[day].opening});$("next").disabled=true;renderDays();update();$("systemnote").textContent="交接进度已更新。"+(day===3?"行为一致性评估：98%。":"");save();if(day===6){ending=true;setTimeout(showEnding,1000);}}
 function showEnding(){let type=signals.silence>4?"C · NO LONGER AVAILABLE":signals.trace>signals.mimicry?"B · UNFINISHED TRANSFER":"A · A PERFECT REPLACEMENT";let e=document.createElement("div");e.className="ending";e.innerHTML='<div class="muted">HANDOVER COMPLETE · 100%</div><h2>'+type+'</h2><p>所有工作均已完成交接。Iris 已获得独立处理权限。你的账号已从常规协作名单中移除。</p><p class="muted">有些事情被记住了，有些事情没有。系统不会对此进行评价。</p><button id="restart">重新开始</button>';msgs.appendChild(e);$("restart").onclick=()=>{localStorage.removeItem("handover-free-v1");location.reload();};msgs.scrollTop=msgs.scrollHeight;}
-function save(){try{localStorage.setItem("handover-free-v1",JSON.stringify({day,history,signals,name}));}catch(e){}}
+function save(){try{localStorage.setItem("handover-free-v1",JSON.stringify({day,history,signals,name,facts}));}catch(e){}}
 function restartConversation(){if(!confirm("重新开始这段交接？当前对话记录和进度会清空。"))return;day=0;history=[];facts=[];signals={mimicry:0,trace:0,autonomy:0,silence:0};name="";ending=false;localStorage.removeItem("handover-free-v1");$("input").value="";msgs.innerHTML="";start();$("systemnote").textContent="新一轮交接已开始。请协助 Iris 熟悉工作。";}
-function load(){try{let d=JSON.parse(localStorage.getItem("handover-free-v1"));if(!d)return false;day=d.day;history=d.history||[];signals=d.signals||signals;name=d.name||"";msgs.innerHTML='<div class="daylabel" id="daylabel"></div>';history.forEach(x=>add(x.text,x.me));$("daylabel").textContent=days[day].date+"　|　DAY "+String(day+1).padStart(2,"0");renderDays();update();return true;}catch(e){return false;}}
+function load(){try{let d=JSON.parse(localStorage.getItem("handover-free-v1"));if(!d)return false;day=d.day;history=d.history||[];signals=d.signals||signals;name=d.name||"";facts=d.facts||[];msgs.innerHTML='<div class="daylabel" id="daylabel"></div>';history.forEach(x=>add(x.text,x.me));$("daylabel").textContent=days[day].date+"　|　DAY "+String(day+1).padStart(2,"0");renderDays();update();return true;}catch(e){return false;}}
 $("restartChat").onclick=restartConversation;$("skipReply").onclick=skipReply;$("nextDay").onclick=next;$("send").onclick=send;$("input").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}});$("next").onclick=next;
 document.querySelectorAll("[data-panel]").forEach(el=>el.onclick=()=>{let p=el.dataset.panel;let content={"团队频道":"# general\n09:12 Alex：大家早。今天先同步一下进度。\n09:14 同事：收到。\n09:16 Alex：有结论的会后单独发我。","项目文件":"交接清单_v7.docx · 已更新\n团队沟通规范.pdf · 只读\n个人工作笔记 · 权限受限\n未发送的草稿.txt · 未归档","日历":"09:30 Weekly Sync（optional）\n11:00 Project Review\n14:00 1:1 with Alex\n16:30 Catch-up（optional）","联系人":"Alex · 直属经理\nMia · 私人联系人\nIris · 接任同事","经理 · Alex":"Alex：Iris 上手得很快。后续事项直接和她对接即可。","朋友 · Mia":"Mia：最近怎么样？之前说好的计划还作数吗？"}[p]||p;add("【"+p+"】\n"+content);history.push({day,me:false,text:"【"+p+"】\n"+content});save();}); 
 if(!load())start();
